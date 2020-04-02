@@ -3,4 +3,6 @@ from .servicemock import (  # noqa: F401
     Request,
     Ok,
     verify,
+    clean,
 )
+from .adapter import Adapter  # noqa: F401

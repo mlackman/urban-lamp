@@ -7,11 +7,17 @@ import requests_mock  # type: ignore
 class ExpectedRequests:
     _expected_requests: List[Request] = []
 
-    def add(self, request: Request):
-        self._expected_requests.append(request)
+    @classmethod
+    def add(cls, request: Request):
+        cls._expected_requests.append(request)
 
-    def get_requests_not_made(self) -> List[Request]:
-        return [r for r in self._expected_requests if r.requested is False]
+    @classmethod
+    def get_requests_not_made(cls) -> List[Request]:
+        return [r for r in cls._expected_requests if r.requested is False]
+
+    @classmethod
+    def reset(cls):
+        cls._expected_requests = []
 
 
 class Response:
@@ -33,7 +39,6 @@ class Request:
         self.method = method
         self.url = url
         self.requested = False
-        self._repo = ExpectedRequests()
 
     def _match_request(self, request: requests.Request):
         self.requested = True
@@ -46,10 +51,9 @@ class ResponseDSL:
 
     def __init__(self, request: Request):
         self._request = request
-        self._repo = ExpectedRequests()
 
     def responds(self, response: Response):
-        self._repo.add(self._request)
+        ExpectedRequests.add(self._request)
 
 
 def expect(request: Request) -> ResponseDSL:
@@ -57,5 +61,16 @@ def expect(request: Request) -> ResponseDSL:
 
 
 def verify():
-    requests = ExpectedRequests().get_requests_not_made()
+    """
+    Verify all expected requests were made.
+    """
+    requests = ExpectedRequests.get_requests_not_made()
     assert requests == [], f"Expected request '{requests[0]}' but never received the request"
+
+
+def clean():
+    """
+    Clears all expectations.
+    Should be called between tests
+    """
+    ExpectedRequests.reset()
