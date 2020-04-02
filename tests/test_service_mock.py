@@ -16,7 +16,7 @@ def test_when_service_is_not_called_informative_exception_is_raised(requests_moc
 
     with pytest.raises(AssertionError) as e:
         sm.verify()
-    assert "Expected request 'GET /v1/status-check' but never received the request" in str(e.value)
+    assert "Expected request 'GET /v1/status-check' was not made." in str(e.value)
 
 
 def test_when_request_is_made_to_not_expected_end_point_informative_exception_is_raised(servicemock):

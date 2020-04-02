@@ -65,7 +65,7 @@ def verify():
     Verify all expected requests were made.
     """
     requests = ExpectedRequests.get_requests_not_made()
-    assert requests == [], f"Expected request '{requests[0]}' but never received the request"
+    assert requests == [], f"Expected request '{requests[0]}' was not made."
 
 
 def clean():
