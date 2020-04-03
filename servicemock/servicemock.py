@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List
+from typing import List, Sequence
 import requests
 import requests_mock  # type: ignore
 
@@ -47,6 +47,20 @@ class Request:
         return f'{self.method} {self.url}'
 
 
+class VerifyErrorMessage:
+
+    def __init__(self, requests: Sequence[Request]):
+        self._requests = requests
+
+    def __str__(self) -> str:
+        if len(self._requests) == 1:
+            return f"Expected request '{self._requests[0]}' was not made."
+        else:
+            msg = "Following expected requests were not made:\n  - "
+            msg += "\n  - ".join([str(r) for r in self._requests])
+            return msg
+
+
 class ResponseDSL:
 
     def __init__(self, request: Request):
@@ -65,7 +79,7 @@ def verify():
     Verify all expected requests were made.
     """
     requests = ExpectedRequests.get_requests_not_made()
-    assert requests == [], f"Expected request '{requests[0]}' was not made."
+    assert requests == [], str(VerifyErrorMessage(requests))
 
 
 def clean():
