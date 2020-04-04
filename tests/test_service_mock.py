@@ -40,7 +40,7 @@ def test_when_expected_request_is_made_then_verify_does_not_raise_exception(serv
     with sm.Mocker() as m:
         sm.expect('http://my-service.com', m).to_receive(sm.Request('GET', '/v1/status-check'))
 
-        requests.get('http://someservice/v1/status-check')
+        requests.get('http://my-service.com/v1/status-check')
         # assert res.status_code == 200  # TODO: add own test
         # assert res.reason == 'OK'
 

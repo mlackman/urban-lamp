@@ -42,8 +42,9 @@ class Request:
         self.url = url
         self.requested = False
 
-    def _match_request(self, request: requests.Request):
+    def match_request(self, request: requests.Request):
         self.requested = True
+        return self.requested
 
     def __str__(self) -> str:
         return f'{self.method} {self.url}'
@@ -69,7 +70,7 @@ class ResponseDSL:
         self._request = request
 
     def and_responds(self, response: Response):
-        ExpectedRequests.add(self._request)
+        pass
 
 
 class RequestDSL:
@@ -80,8 +81,12 @@ class RequestDSL:
 
     def to_receive(self, request: Request) -> ResponseDSL:
         r = Request(request.method, f'{self._base_url}{request.url}')
+        self._register_uri(r)
         ExpectedRequests.add(r)
         return ResponseDSL(r)
+
+    def _register_uri(self, request: Request):
+        self._m.register_uri(request.method, request.url, additional_matcher=request.match_request)
 
 
 def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
