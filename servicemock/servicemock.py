@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Sequence
+from typing import List, Sequence, Optional
 import requests
 import requests_mock  # type: ignore
 
@@ -34,8 +34,7 @@ class Ok(Response):
 
 class Request:
 
-    def __init__(self, mocker: requests_mock.Mocker,  method: str, url: str):
-        self._m = mocker
+    def __init__(self, method: str, url: str):
         self.method = method
         self.url = url
         self.requested = False
@@ -66,12 +65,24 @@ class ResponseDSL:
     def __init__(self, request: Request):
         self._request = request
 
-    def responds(self, response: Response):
+    def and_responds(self, response: Response):
         ExpectedRequests.add(self._request)
 
 
-def expect(request: Request) -> ResponseDSL:
-    return ResponseDSL(request)
+class RequestDSL:
+
+    def __init__(self, base_url: str, m: requests_mock.Mocker):
+        self._base_url = base_url
+        self._m = m
+
+    def to_receive(self, request: Request) -> ResponseDSL:
+        r = Request(request.method, f'{self._base_url}{request.url}')
+        ExpectedRequests.add(r)
+        return ResponseDSL(r)
+
+
+def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
+    return RequestDSL(base_url, m)
 
 
 def verify():

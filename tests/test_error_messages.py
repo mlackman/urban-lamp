@@ -2,7 +2,7 @@ from .context import VerifyErrorMessage, Request
 
 
 def create_request() -> Request:
-    return Request(None, 'method', 'someurl')
+    return Request('method', 'someurl')
 
 
 def test_error_message_when_one_request():
