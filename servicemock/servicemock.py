@@ -1,5 +1,7 @@
 from __future__ import annotations
-from typing import List, Sequence, Optional
+from typing import List, Sequence, Optional, Mapping, Any
+import json
+
 import requests
 import requests_mock  # type: ignore
 
@@ -22,15 +24,23 @@ class ExpectedRequests:
 
 class Response:
 
-    def __init__(self, http_status: str):
+    def __init__(self, http_status: str, body: Optional[str] = None):
         code, self.http_reason = http_status.split(' ', 1)
         self.http_code = int(code)
+        self.body = body
 
 
 class HTTP200Ok(Response):
 
     def __init__(self):
         super().__init__('200 OK')
+
+
+class JSON(Response):
+
+    def __init__(self, body: Mapping[str, Any], http_status: Optional[str] = None):
+        status = http_status or '200 OK'
+        super().__init__(status, json.dumps(body))
 
 
 class Request:
@@ -75,7 +85,8 @@ class ResponseDSL:
         self._register_uri()
 
     def and_responds(self, response: Response):
-        pass
+        self._response = response
+        self._register_uri()
 
     def _register_uri(self):
         self._m.register_uri(
@@ -83,7 +94,8 @@ class ResponseDSL:
             self._request.url,
             additional_matcher=self._request.match_request,
             status_code=self._response.http_code,
-            reason=self._response.http_reason
+            reason=self._response.http_reason,
+            text=self._response.body
         )
 
 

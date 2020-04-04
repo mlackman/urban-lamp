@@ -52,3 +52,11 @@ def test_default_response(servicemock: Any):
         res = requests.get('http://my-service.com/v1/status-check')
         assert res.status_code == 200
         assert res.reason == 'OK'
+
+
+def test_given_response_is_returned(servicemock: Any):
+    with sm.Mocker() as m:
+        sm.expect('http://my-service.com', m).to_receive(sm.Request('GET', '/v1/status-check')).and_responds(sm.JSON({'status': 'ok'}))
+
+        res = requests.get('http://my-service.com/v1/status-check')
+        assert res.json() == {"status": "ok"}
