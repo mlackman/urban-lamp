@@ -24,3 +24,11 @@ class Adapter(requests_mock.Adapter):
         except requests_mock.NoMockAddress as e:
 
             raise UnexpectedRequest(e.request)
+
+
+class Mocker(requests_mock.Mocker):
+
+    def __init__(self, *args, **kwargs):
+        # TODO: If somebody is giving adapter, raise not possible
+        kwargs['adapter'] = Adapter()
+        super().__init__(*args, **kwargs)

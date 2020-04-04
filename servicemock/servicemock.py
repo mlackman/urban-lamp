@@ -33,6 +33,9 @@ class Ok(Response):
 
 
 class Request:
+    """
+    Request, which is expected to receive
+    """
 
     def __init__(self, method: str, url: str):
         self.method = method

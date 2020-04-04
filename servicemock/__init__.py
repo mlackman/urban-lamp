@@ -5,4 +5,4 @@ from .servicemock import (  # noqa: F401
     verify,
     clean,
 )
-from .adapter import Adapter  # noqa: F401
+from .adapter import Adapter, Mocker  # noqa: F401
