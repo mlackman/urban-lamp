@@ -23,10 +23,11 @@ class ExpectedRequests:
 class Response:
 
     def __init__(self, http_status: str):
-        self.http_code, self.http_reason = http_status.split(' ', 1)
+        code, self.http_reason = http_status.split(' ', 1)
+        self.http_code = int(code)
 
 
-class Ok(Response):
+class HTTP200Ok(Response):
 
     def __init__(self):
         super().__init__('200 OK')
@@ -65,12 +66,25 @@ class VerifyErrorMessage:
 
 
 class ResponseDSL:
+    default_response: Response = HTTP200Ok()
 
-    def __init__(self, request: Request):
+    def __init__(self, m: requests_mock.Mocker, request: Request):
+        self._m = m
         self._request = request
+        self._response = self.default_response
+        self._register_uri()
 
     def and_responds(self, response: Response):
         pass
+
+    def _register_uri(self):
+        self._m.register_uri(
+            self._request.method,
+            self._request.url,
+            additional_matcher=self._request.match_request,
+            status_code=self._response.http_code,
+            reason=self._response.http_reason
+        )
 
 
 class RequestDSL:
@@ -81,12 +95,8 @@ class RequestDSL:
 
     def to_receive(self, request: Request) -> ResponseDSL:
         r = Request(request.method, f'{self._base_url}{request.url}')
-        self._register_uri(r)
         ExpectedRequests.add(r)
-        return ResponseDSL(r)
-
-    def _register_uri(self, request: Request):
-        self._m.register_uri(request.method, request.url, additional_matcher=request.match_request)
+        return ResponseDSL(self._m, r)
 
 
 def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
