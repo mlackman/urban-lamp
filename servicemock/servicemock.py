@@ -1,6 +1,7 @@
 from __future__ import annotations
-from typing import List, Sequence, Optional, Mapping, Any
+from typing import List, Sequence, Optional, Mapping, Any, Callable
 import json
+import functools
 
 import requests
 import requests_mock  # type: ignore
@@ -78,21 +79,17 @@ class VerifyErrorMessage:
 class ResponseDSL:
     default_response: Response = HTTP200Ok()
 
-    def __init__(self, m: requests_mock.Mocker, request: Request):
-        self._m = m
-        self._request = request
+    def __init__(self, register_uri: Callable):
+        self._register_uri = register_uri
         self._response = self.default_response
-        self._register_uri()
+        self._register()
 
     def and_responds(self, response: Response):
         self._response = response
-        self._register_uri()
+        self._register()
 
-    def _register_uri(self):
-        self._m.register_uri(
-            self._request.method,
-            self._request.url,
-            additional_matcher=self._request.match_request,
+    def _register(self):
+        self._register_uri(
             status_code=self._response.http_code,
             reason=self._response.http_reason,
             text=self._response.body
@@ -107,8 +104,9 @@ class RequestDSL:
 
     def to_receive(self, request: Request) -> ResponseDSL:
         r = Request(request.method, f'{self._base_url}{request.url}')
+        register_uri = functools.partial(self._m.register_uri, request.method, request.url, additional_matcher=r.match_request)
         ExpectedRequests.add(r)
-        return ResponseDSL(self._m, r)
+        return ResponseDSL(register_uri)
 
 
 def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
