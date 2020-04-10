@@ -1,5 +1,5 @@
 from __future__ import annotations
-from typing import List, Sequence, Optional, Mapping, Any
+from typing import List, Sequence, Optional, Mapping, Any, Dict
 from abc import ABC, abstractmethod
 
 import requests
@@ -26,30 +26,35 @@ class RequestUriBuilder:
 
     def __init__(self, m: requests_mock.Mocker):
         self._m = m
+        self._headers: Dict[str, str] = {}
 
     def match_request(self, method: str, url: Any, **kwargs):
         self._method = method
         self._url = url
         self._kwargs = kwargs
 
-    def set_response(self, **kwargs):
+    def set_response(self, headers: Optional[Dict[str, str]] = None, **kwargs):
+        if headers:
+            self._headers.update(**headers)
         self._kwargs.update(**kwargs)
 
     def register(self):
-        self._m.register_uri(self._method, self._url, **self._kwargs)
+        self._m.register_uri(self._method, self._url, headers=self._headers, **self._kwargs)
 
 
 class Response:
 
-    def __init__(self, http_status: str, body: Optional[ResponseBody] = None):
+    def __init__(self, http_status: str, body: Optional[ResponseBody] = None, headers: Optional[Dict[str, str]] = None):
         code, self.http_reason = http_status.split(' ', 1)
         self.http_code = int(code)
         self.body = body
+        self.headers = headers
 
     def register(self, builder: RequestUriBuilder):
         builder.set_response(
             status_code=self.http_code,
             reason=self.http_reason,
+            headers=self.headers
         )
         if self.body:
             self.body.register(builder)
@@ -57,8 +62,8 @@ class Response:
 
 class HTTP200Ok(Response):
 
-    def __init__(self, body: Optional[ResponseBody] = None):
-        super().__init__('200 OK', body)
+    def __init__(self, *args, **kwargs):
+        super().__init__('200 OK', *args, **kwargs)
 
 
 class ResponseBody(ABC):
@@ -70,11 +75,12 @@ class ResponseBody(ABC):
 
 class JSON(ResponseBody):
 
-    def __init__(self, body: Mapping[str, Any]):
+    def __init__(self, body: Mapping[str, Any], headers: Optional[Dict[str, str]] = None):
         self._body = body
+        self._headers = headers
 
     def register(self, builder: RequestUriBuilder):
-        builder.set_response(json=self._body)
+        builder.set_response(json=self._body, headers=self._headers)
 
 
 class Request:
