@@ -27,34 +27,43 @@ class RequestUriBuilder:
     def __init__(self, m: requests_mock.Mocker):
         self._m = m
         self._headers: Dict[str, str] = {}
+        self._cookiejar = requests_mock.CookieJar()
 
     def match_request(self, method: str, url: Any, **kwargs):
         self._method = method
         self._url = url
         self._kwargs = kwargs
 
-    def set_response(self, headers: Optional[Dict[str, str]] = None, **kwargs):
+    def set_response(self, headers: Optional[Dict[str, str]] = None, cookies: Optional[Sequence[Cookie]] = None,
+                     **kwargs):
         if headers:
             self._headers.update(**headers)
+        if cookies:
+            for cookie in cookies:
+                cookie.add_to(self._cookiejar)
         self._kwargs.update(**kwargs)
 
     def register(self):
-        self._m.register_uri(self._method, self._url, headers=self._headers, **self._kwargs)
+        self._m.register_uri(self._method, self._url, headers=self._headers, cookies=self._cookiejar, **self._kwargs)
 
 
 class Response:
 
-    def __init__(self, http_status: str, body: Optional[ResponseBody] = None, headers: Optional[Dict[str, str]] = None):
+    def __init__(self, http_status: str,
+                 body: Optional[ResponseBody] = None, headers: Optional[Dict[str, str]] = None,
+                 cookies: Optional[Sequence[Cookie]] = None):
         code, self.http_reason = http_status.split(' ', 1)
         self.http_code = int(code)
         self.body = body
         self.headers = headers
+        self.cookies = cookies
 
     def register(self, builder: RequestUriBuilder):
         builder.set_response(
             status_code=self.http_code,
             reason=self.http_reason,
-            headers=self.headers
+            headers=self.headers,
+            cookies=self.cookies,
         )
         if self.body:
             self.body.register(builder)
@@ -75,12 +84,25 @@ class ResponseBody(ABC):
 
 class JSON(ResponseBody):
 
-    def __init__(self, body: Mapping[str, Any], headers: Optional[Dict[str, str]] = None):
+    def __init__(self, body: Mapping[str, Any], headers: Optional[Dict[str, str]] = None,
+                 cookies: Optional[Sequence[Cookie]] = None):
         self._body = body
         self._headers = headers
+        self._cookies = cookies
 
     def register(self, builder: RequestUriBuilder):
-        builder.set_response(json=self._body, headers=self._headers)
+        builder.set_response(json=self._body, headers=self._headers, cookies=self._cookies)
+
+
+class Cookie:
+
+    def __init__(self, name: str, value: str, **kwargs):
+        self._name = name
+        self._value = value
+        self._kwargs = kwargs
+
+    def add_to(self, cookiejar: requests_mock.CookieJar):
+        cookiejar.set(self._name, self._value, **self._kwargs)
 
 
 class Request:

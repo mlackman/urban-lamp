@@ -75,3 +75,16 @@ def test_headers_can_be_set_from_body_and_actual_response(servicemock: Any):
 
         res = requests.get('http://my-service.com/v1/status-check')
         assert res.headers == {'Content-Type': 'application/json', 'Cf-Ipcountry': 'US'}
+
+
+def test_cookies_can_be_set_from_body_and_actual_response(servicemock: Any):
+    with sm.Mocker() as m:
+        (sm.expect('http://my-service.com', m)
+            .to_receive(sm.Request('GET', '/v1/status-check'))
+            .and_responds(sm.HTTP200Ok(
+                sm.JSON({'status': 'ok'}, cookies=(sm.Cookie('session', 'deadbeef', path='/v1/status-check'),)),
+                cookies=(sm.Cookie('value', '5'),))
+            ))
+
+        res = requests.get('http://my-service.com/v1/status-check')
+        assert {'value': '5', 'session': 'deadbeef'} == res.cookies.get_dict()
