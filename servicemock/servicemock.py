@@ -1,6 +1,6 @@
 from __future__ import annotations
 from typing import List, Sequence, Optional, Mapping, Any
-import json
+from abc import ABC, abstractmethod
 
 import requests
 import requests_mock  # type: ignore
@@ -41,7 +41,7 @@ class RequestUriBuilder:
 
 class Response:
 
-    def __init__(self, http_status: str, body: Optional[str] = None):
+    def __init__(self, http_status: str, body: Optional[ResponseBody] = None):
         code, self.http_reason = http_status.split(' ', 1)
         self.http_code = int(code)
         self.body = body
@@ -50,21 +50,31 @@ class Response:
         builder.set_response(
             status_code=self.http_code,
             reason=self.http_reason,
-            text=self.body
         )
+        if self.body:
+            self.body.register(builder)
 
 
 class HTTP200Ok(Response):
 
-    def __init__(self):
-        super().__init__('200 OK')
+    def __init__(self, body: Optional[ResponseBody] = None):
+        super().__init__('200 OK', body)
 
 
-class JSON(Response):
+class ResponseBody(ABC):
 
-    def __init__(self, body: Mapping[str, Any], http_status: Optional[str] = None):
-        status = http_status or '200 OK'
-        super().__init__(status, json.dumps(body))
+    @abstractmethod
+    def register(self, builder: RequestUriBuilder):
+        pass
+
+
+class JSON(ResponseBody):
+
+    def __init__(self, body: Mapping[str, Any]):
+        self._body = body
+
+    def register(self, builder: RequestUriBuilder):
+        builder.set_response(json=self._body)
 
 
 class Request:
