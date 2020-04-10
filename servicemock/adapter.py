@@ -1,3 +1,5 @@
+from typing import Any
+
 import requests_mock  # type: ignore
 
 from .servicemock import ExpectedRequests

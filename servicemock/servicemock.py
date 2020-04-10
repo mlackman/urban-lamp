@@ -1,7 +1,6 @@
 from __future__ import annotations
-from typing import List, Sequence, Optional, Mapping, Any, Callable
+from typing import List, Sequence, Optional, Mapping, Any
 import json
-import functools
 
 import requests
 import requests_mock  # type: ignore
@@ -23,12 +22,36 @@ class ExpectedRequests:
         cls._expected_requests = []
 
 
+class RequestUriBuilder:
+
+    def __init__(self, m: requests_mock.Mocker):
+        self._m = m
+
+    def match_request(self, method: str, url: Any, **kwargs):
+        self._method = method
+        self._url = url
+        self._kwargs = kwargs
+
+    def set_response(self, **kwargs):
+        self._kwargs.update(**kwargs)
+
+    def register(self):
+        self._m.register_uri(self._method, self._url, **self._kwargs)
+
+
 class Response:
 
     def __init__(self, http_status: str, body: Optional[str] = None):
         code, self.http_reason = http_status.split(' ', 1)
         self.http_code = int(code)
         self.body = body
+
+    def register(self, builder: RequestUriBuilder):
+        builder.set_response(
+            status_code=self.http_code,
+            reason=self.http_reason,
+            text=self.body
+        )
 
 
 class HTTP200Ok(Response):
@@ -54,7 +77,10 @@ class Request:
         self.url = url
         self.requested = False
 
-    def match_request(self, request: requests.Request):
+    def register(self, builder: RequestUriBuilder):
+        builder.match_request(self.method, self.url, additional_matcher=self._match_request)
+
+    def _match_request(self, request: requests.Request):
         self.requested = True
         return self.requested
 
@@ -79,8 +105,8 @@ class VerifyErrorMessage:
 class ResponseDSL:
     default_response: Response = HTTP200Ok()
 
-    def __init__(self, register_uri: Callable):
-        self._register_uri = register_uri
+    def __init__(self, builder: RequestUriBuilder):
+        self._builder = builder
         self._response = self.default_response
         self._register()
 
@@ -89,28 +115,26 @@ class ResponseDSL:
         self._register()
 
     def _register(self):
-        self._register_uri(
-            status_code=self._response.http_code,
-            reason=self._response.http_reason,
-            text=self._response.body
-        )
+        self._response.register(self._builder)
+        self._builder.register()
 
 
 class RequestDSL:
 
-    def __init__(self, base_url: str, m: requests_mock.Mocker):
+    def __init__(self, base_url: str, builder: RequestUriBuilder):
         self._base_url = base_url
-        self._m = m
+        self._builder = builder
 
     def to_receive(self, request: Request) -> ResponseDSL:
         r = Request(request.method, f'{self._base_url}{request.url}')
-        register_uri = functools.partial(self._m.register_uri, request.method, request.url, additional_matcher=r.match_request)
+        r.register(self._builder)
         ExpectedRequests.add(r)
-        return ResponseDSL(register_uri)
+        return ResponseDSL(self._builder)
 
 
 def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
-    return RequestDSL(base_url, m)
+    # TODO: if requests_mock not provide make add it to the Context objec (where ExpectedRequests should be also)
+    return RequestDSL(base_url, RequestUriBuilder(m))
 
 
 def verify():
