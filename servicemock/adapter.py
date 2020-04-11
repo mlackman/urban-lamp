@@ -11,7 +11,7 @@ class UnexpectedRequest(requests_mock.NoMockAddress):
         requests = ExpectedRequests.get_requests_not_made()
 
         message = (
-            f"Received unexpected request '{self.request.method} {self.request.url}'.\n"
+            f"Received unexpected request '{self.request.method} {self.request.url}, headers: {self.request.headers}'.\n"
             "Expected requests are:\n"
             "  - "
         )

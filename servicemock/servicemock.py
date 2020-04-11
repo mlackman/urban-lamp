@@ -1,9 +1,13 @@
 from __future__ import annotations
 from typing import List, Sequence, Optional, Mapping, Any, Dict
 from abc import ABC, abstractmethod
+import copy
 
 import requests
 import requests_mock  # type: ignore
+
+# Types
+Headers = Dict[str, str]
 
 
 class ExpectedRequests:
@@ -110,20 +114,26 @@ class Request:
     Request, which is expected to receive
     """
 
-    def __init__(self, method: str, url: str):
+    def __init__(self, method: str, url: str, headers: Optional[Headers] = None):
         self.method = method
         self.url = url
         self.requested = False
+        self.headers = headers or {}
 
     def register(self, builder: RequestUriBuilder):
-        builder.match_request(self.method, self.url, additional_matcher=self._match_request)
+        builder.match_request(self.method, self.url, request_headers=self.headers, additional_matcher=self._match_request)
 
     def _match_request(self, request: requests.Request):
         self.requested = True
         return self.requested
 
     def __str__(self) -> str:
-        return f'{self.method} {self.url}'
+        description = f'{self.method} {self.url}'
+
+        if self.headers:
+            description = description + f', headers: {self.headers}'
+
+        return description
 
 
 class VerifyErrorMessage:
@@ -164,7 +174,8 @@ class RequestDSL:
         self._builder = builder
 
     def to_receive(self, request: Request) -> ResponseDSL:
-        r = Request(request.method, f'{self._base_url}{request.url}')
+        r = copy.deepcopy(request)
+        r.url = f'{self._base_url}{request.url}'
         r.register(self._builder)
         ExpectedRequests.add(r)
         return ResponseDSL(self._builder)

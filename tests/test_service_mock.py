@@ -29,7 +29,8 @@ def test_when_request_is_made_to_not_expected_end_point_informative_exception_is
             requests.get('http://service/user')
 
         expected_error_description = (
-            "Received unexpected request 'GET http://service/user'.\n"
+            "Received unexpected request 'GET http://service/user, "
+            "headers: {'User-Agent': 'python-requests/2.23.0', 'Accept-Encoding': 'gzip, deflate', 'Accept': '*/*', 'Connection': 'keep-alive'}'.\n"
             "Expected requests are:\n"
             "  - GET http://my-service.com/v1/status-check"
         )
@@ -41,6 +42,32 @@ def test_when_expected_request_is_made_then_verify_does_not_raise_exception(serv
         sm.expect('http://my-service.com', m).to_receive(sm.Request('GET', '/v1/status-check'))
 
         requests.get('http://my-service.com/v1/status-check')
+
+        sm.verify()  # no exceptions should be raised
+
+
+def test_when_header_is_not_the_expected_then_exception_is_raised(servicemock: Any):
+    with sm.Mocker() as m:
+        sm.expect('http://my-service.com', m).to_receive(sm.Request('GET', '/v1/status-check', headers={'x-token': 'deadbeef'}))
+
+        with pytest.raises(Exception) as e:
+            requests.get('http://my-service.com/v1/status-check', headers={'x-token': 'cafebabe'})
+
+        expected_error_description = (
+            "Received unexpected request 'GET http://my-service.com/v1/status-check, "
+            "headers: {'User-Agent': 'python-requests/2.23.0', 'Accept-Encoding': 'gzip, deflate', "
+            "'Accept': '*/*', 'Connection': 'keep-alive', 'x-token': 'cafebabe'}'.\n"
+            "Expected requests are:\n"
+            "  - GET http://my-service.com/v1/status-check, headers: {'x-token': 'deadbeef'}"
+        )
+        assert expected_error_description == str(e.value)
+
+
+def test_when_header_matches_then_no_exception_is_raised(servicemock: Any):
+    with sm.Mocker() as m:
+        sm.expect('http://my-service.com', m).to_receive(sm.Request('GET', '/v1/status-check', headers={'x-token': 'deadbeef'}))
+
+        requests.get('http://my-service.com/v1/status-check', headers={'x-token': 'deadbeef'})
 
         sm.verify()  # no exceptions should be raised
 
