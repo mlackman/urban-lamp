@@ -2,6 +2,7 @@ from __future__ import annotations
 from typing import List, Sequence, Optional, Mapping, Any, Dict
 from abc import ABC, abstractmethod
 import copy
+import json
 
 import requests
 import requests_mock  # type: ignore
@@ -114,17 +115,18 @@ class Request:
     Request, which is expected to receive
     """
 
-    def __init__(self, method: str, url: str, headers: Optional[Headers] = None):
+    def __init__(self, method: str, url: str, body: Optional[RequestBody] = None, headers: Optional[Headers] = None):
         self.method = method
         self.url = url
         self.requested = False
         self.headers = headers or {}
+        self.body = body or NullRequestBody()
 
     def register(self, builder: RequestUriBuilder):
         builder.match_request(self.method, self.url, request_headers=self.headers, additional_matcher=self._match_request)
 
     def _match_request(self, request: requests.Request):
-        self.requested = True
+        self.requested = self.body.match(request)
         return self.requested
 
     def __str__(self) -> str:
@@ -133,7 +135,47 @@ class Request:
         if self.headers:
             description = description + f', headers: {self.headers}'
 
+        body_description = str(self.body)
+        if body_description:
+            description = description + f', {body_description}'
+
         return description
+
+
+class RequestBody(ABC):
+
+    @abstractmethod
+    def match(self, request: requests.Request) -> bool:
+        pass
+
+    @abstractmethod
+    def __str__(self) -> str:
+        pass
+
+
+class NullRequestBody(RequestBody):
+
+    def match(self, *args, **kwargs) -> bool:
+        return True
+
+    def __str__(self):
+        return ''
+
+
+class JSONRequestBody(RequestBody):
+
+    def __init__(self, body: Dict[str, Any]):
+        self.body = body
+
+    def match(self, request: requests.Request) -> bool:
+        try:
+            received_json = request.json()
+        except json.JSONDecodeError:
+            received_json = None
+        return received_json == self.body
+
+    def __str__(self):
+        return f'json: {self.body}'
 
 
 class VerifyErrorMessage:

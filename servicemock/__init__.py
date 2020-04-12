@@ -5,6 +5,7 @@ from .servicemock import (  # noqa: F401
     JSON,
     verify,
     clean,
-    Cookie
+    Cookie,
+    JSONRequestBody,
 )
 from .adapter import Adapter, Mocker  # noqa: F401

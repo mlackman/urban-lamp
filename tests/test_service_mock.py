@@ -72,6 +72,51 @@ def test_when_header_matches_then_no_exception_is_raised(servicemock: Any):
         sm.verify()  # no exceptions should be raised
 
 
+def test_when_expected_request_body_does_not_match_then_exception_is_raised(servicemock: Any):
+    with sm.Mocker() as m:
+        sm.expect('http://my-service.com', m).to_receive(sm.Request('POST', '/v1/users', body=sm.JSONRequestBody({'username': 'smithy'})))
+
+        with pytest.raises(Exception) as e:
+            requests.post('http://my-service.com/v1/users', json={'first_name': 'Mike'})
+
+        expected_error_description = (
+            "Received unexpected request 'POST http://my-service.com/v1/users, "
+            "headers: {'User-Agent': 'python-requests/2.23.0', 'Accept-Encoding': 'gzip, deflate', "
+            "'Accept': '*/*', 'Connection': 'keep-alive', 'Content-Length': '22', 'Content-Type': 'application/json'}', "
+            "json: {'first_name': 'Mike'}.\n"
+            "Expected requests are:\n"
+            "  - POST http://my-service.com/v1/users, json: {'username': 'smithy'}"
+        )
+        assert expected_error_description == str(e.value)
+
+
+def test_when_body_matches_then_exception_is_not_raised(servicemock: Any):
+    with sm.Mocker() as m:
+        sm.expect('http://my-service.com', m).to_receive(sm.Request('POST', '/v1/users', body=sm.JSONRequestBody({'name': 'john'})))
+
+        requests.post('http://my-service.com/v1/users', json={'name': 'john'})
+
+        sm.verify()  # no exceptions should be raised
+
+
+def test_when_request_body_is_form_but_expecting_json_then_exception_is_raised(servicemock: Any):
+    with sm.Mocker() as m:
+        sm.expect('http://my-service.com', m).to_receive(sm.Request('POST', '/v1/users', body=sm.JSONRequestBody({'username': 'smithy'})))
+
+        with pytest.raises(Exception) as e:
+            requests.post('http://my-service.com/v1/users', data={'first_name': 'smithy'})
+
+        expected_error_description = (
+            "Received unexpected request 'POST http://my-service.com/v1/users, "
+            "headers: {'User-Agent': 'python-requests/2.23.0', 'Accept-Encoding': 'gzip, deflate', "
+            "'Accept': '*/*', 'Connection': 'keep-alive', 'Content-Length': '17', 'Content-Type': 'application/x-www-form-urlencoded'}', "
+            "text: first_name=smithy.\n"
+            "Expected requests are:\n"
+            "  - POST http://my-service.com/v1/users, json: {'username': 'smithy'}"
+        )
+        assert expected_error_description == str(e.value)
+
+
 def test_default_response(servicemock: Any):
     with sm.Mocker() as m:
         sm.expect('http://my-service.com', m).to_receive(sm.Request('GET', '/v1/status-check'))
