@@ -1,4 +1,4 @@
-from .context import Request, JSONRequestBody
+from servicemock import Request, JSONRequestBody
 
 
 def test_converting_to_string_when_only_method_and_url():

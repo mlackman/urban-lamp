@@ -4,7 +4,7 @@ import requests
 import requests_mock  # type: ignore
 import pytest  # type: ignore
 
-from .context import servicemock as sm
+import servicemock as sm
 
 
 @pytest.fixture(scope="function")
