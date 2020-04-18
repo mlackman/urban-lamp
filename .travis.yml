@@ -7,4 +7,5 @@ install:
 
 script:
   - flake8
+  - mypy -p servicemock -p tests
   - pytest
