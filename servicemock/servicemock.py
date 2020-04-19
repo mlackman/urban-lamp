@@ -227,7 +227,6 @@ class RequestDSL:
 
 def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
     # TODO: Assert not giving m after having already _reguests_mock
-    # TODO: if requests_mock not provide make add it to the Context objec (where ExpectedRequests should be also)
     global _requests_mock
     if not m:
         if not _requests_mock:
@@ -249,14 +248,7 @@ def start():
     """
     Inits service mock, can be called between tests
     """
-    clean()
-
-
-def clean():
-    """
-    Clears all expectations.
-    Should be called between tests
-    """
+    # TODO: Encapsulate to context object
     if _requests_mock:
         _requests_mock.stop()
 

@@ -5,7 +5,6 @@ from .servicemock import (  # noqa: F401
     HTTP200Ok,
     JSON,
     verify,
-    clean,
     start,
     Cookie,
     JSONRequestBody,

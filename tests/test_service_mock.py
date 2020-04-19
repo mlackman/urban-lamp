@@ -9,7 +9,7 @@ import servicemock as sm
 
 @pytest.fixture(scope="function")
 def servicemock():
-    sm.clean()
+    sm.start()
     return sm
 
 
