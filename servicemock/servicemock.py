@@ -15,17 +15,18 @@ _ctx: Context = None
 
 class Context:
     def __init__(self):
-        self._explicit_requests_mock: requests_mock.Mocker = None
-        self._implicit_requests_mock: requests_mock.Mocker = None
+        self._nullify_requests_mocks()
 
     def start(self):
         if self._implicit_requests_mock:
             self._implicit_requests_mock.stop()
 
-        # TODO: Refactor to function
+        self._nullify_requests_mocks()
+        ExpectedRequests.reset()
+
+    def _nullify_requests_mocks(self):
         self._explicit_requests_mock = None
         self._implicit_requests_mock = None
-        ExpectedRequests.reset()
 
     def init_request_mock(self, m: Optional[requests_mock.Mocker] = None) -> requests_mock.Mocker:
         initializing_request_mock_first_time = self._explicit_requests_mock is None and self._implicit_requests_mock is None
