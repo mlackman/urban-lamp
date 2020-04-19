@@ -10,9 +10,49 @@ import requests_mock  # type: ignore
 # Types
 Headers = Dict[str, str]
 
-_requests_mock: requests_mock.Mocker = None
+_ctx: Context = None
 
 
+class Context:
+    def __init__(self):
+        self._explicit_requests_mock: requests_mock.Mocker = None
+        self._implicit_requests_mock: requests_mock.Mocker = None
+
+    def start(self):
+        if self._implicit_requests_mock:
+            self._implicit_requests_mock.stop()
+
+        # TODO: Refactor to function
+        self._explicit_requests_mock = None
+        self._implicit_requests_mock = None
+        ExpectedRequests.reset()
+
+    def init_request_mock(self, m: Optional[requests_mock.Mocker] = None) -> requests_mock.Mocker:
+        initializing_request_mock_first_time = self._explicit_requests_mock is None and self._implicit_requests_mock is None
+
+        if initializing_request_mock_first_time:
+            implicit_requests_mock_usage = not m
+            if implicit_requests_mock_usage:
+                self._implicit_requests_mock = requests_mock.Mocker()
+                self._implicit_requests_mock.start()
+                mocker = self._implicit_requests_mock
+            else:
+                self._explicit_requests_mock = m
+                mocker = self._explicit_requests_mock
+
+        mocker = self._implicit_requests_mock or self._explicit_requests_mock
+
+        started_implicit_requests_mock_usage = self._implicit_requests_mock is not None
+        if m is not None and started_implicit_requests_mock_usage:
+            raise AssertionError("Implicit requests_mock use started. Add or remove requests_mock.Mocker from/to all 'expect' calls")
+
+        started_explicit_requests_mock_usage = self._explicit_requests_mock is not None
+        if m is None and started_explicit_requests_mock_usage:
+            raise AssertionError("Explicit requests_mock usage started. Add or remove requests_mock.Mocker from/to all 'expect' calls")
+        return mocker
+
+
+# TODO: Make normal class
 class ExpectedRequests:
     _expected_requests: List[Request] = []
 
@@ -226,14 +266,9 @@ class RequestDSL:
 
 
 def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
-    # TODO: Assert not giving m after having already _reguests_mock
-    global _requests_mock
-    if not m:
-        if not _requests_mock:
-            _requests_mock = requests_mock.Mocker()
-            _requests_mock.start()
-        m = _requests_mock
-    return RequestDSL(base_url, RequestUriBuilder(m))
+    global _ctx
+    mocker = _ctx.init_request_mock(m)
+    return RequestDSL(base_url, RequestUriBuilder(mocker))
 
 
 def verify():
@@ -248,8 +283,6 @@ def start():
     """
     Inits service mock, can be called between tests
     """
-    # TODO: Encapsulate to context object
-    if _requests_mock:
-        _requests_mock.stop()
-
-    ExpectedRequests.reset()
+    global _ctx
+    _ctx = Context()
+    _ctx.start()

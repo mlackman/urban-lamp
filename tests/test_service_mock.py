@@ -25,6 +25,23 @@ def test_service_mock_can_be_used_without_requests_mock_explicitly_initialized()
         sm.verify()
 
 
+def test_mixing_explicit_requests_mock_usage_with_implicit_usage_will_raise_exception(requests_mock: requests_mock.Mocker, servicemock):
+    sm.expect('http://my-service.com').to_receive(sm.Request('GET', '/v1/status-check'))
+
+    with pytest.raises(AssertionError) as e:
+        sm.expect('http://my-service.com', requests_mock).to_receive(sm.Request('GET', '/v1/users'))
+
+    assert "Implicit requests_mock use started. Add or remove requests_mock.Mocker from/to all 'expect' calls" in str(e.value)
+
+
+def test_mixing_implicit_requests_mock_usage_with_explicit_usage_will_raise_exception(requests_mock: requests_mock.Mocker, servicemock):
+    sm.expect('http://my-service.com', requests_mock).to_receive(sm.Request('GET', '/v1/users'))
+
+    with pytest.raises(AssertionError) as e:
+        sm.expect('http://my-service.com').to_receive(sm.Request('GET', '/v1/status-check'))
+    assert "Explicit requests_mock usage started. Add or remove requests_mock.Mocker from/to all 'expect' calls" in str(e.value)
+
+
 def test_when_service_is_not_called_informative_exception_is_raised(requests_mock: requests_mock.Mocker, servicemock):
     sm.expect('http://my-service.com', requests_mock).to_receive(sm.Request('GET', '/v1/status-check'))
 
