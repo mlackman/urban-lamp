@@ -10,7 +10,7 @@ import requests_mock  # type: ignore
 # Types
 Headers = Dict[str, str]
 
-_ctx: Context = None
+_ctx: Optional[Context] = None
 
 
 class Context:
@@ -25,35 +25,45 @@ class Context:
         ExpectedRequests.reset()
 
     def _nullify_requests_mocks(self):
-        self._explicit_requests_mock = None
-        self._implicit_requests_mock = None
+        self._explicit_requests_mock: Optional[requests_mock.Mocker] = None
+        self._implicit_requests_mock: Optional[requests_mock.Mocker] = None
 
     def init_request_mock(self, m: Optional[requests_mock.Mocker] = None) -> requests_mock.Mocker:
-        initializing_request_mock_first_time = self._explicit_requests_mock is None and self._implicit_requests_mock is None
-
-        if initializing_request_mock_first_time:
-            implicit_requests_mock_usage = not m
+        if not self.requests_mock_initialized:
+            implicit_requests_mock_usage = m is None
             if implicit_requests_mock_usage:
-                self._implicit_requests_mock = requests_mock.Mocker()
-                self._implicit_requests_mock.start()
-                mocker = self._implicit_requests_mock
+                self._init_implicit_request_mock()
             else:
                 self._explicit_requests_mock = m
-                mocker = self._explicit_requests_mock
 
-        mocker = self._implicit_requests_mock or self._explicit_requests_mock
-
-        started_implicit_requests_mock_usage = self._implicit_requests_mock is not None
-        if m is not None and started_implicit_requests_mock_usage:
+        if m is not None and self.implicit_requests_mock_usage_started:
             raise AssertionError("Implicit requests_mock use started. Add or remove requests_mock.Mocker from/to all 'expect' calls")
 
-        started_explicit_requests_mock_usage = self._explicit_requests_mock is not None
-        if m is None and started_explicit_requests_mock_usage:
+        if m is None and self.explicit_requests_mock_usage_started:
             raise AssertionError("Explicit requests_mock usage started. Add or remove requests_mock.Mocker from/to all 'expect' calls")
-        return mocker
+        return self.requests_mock
+
+    @property
+    def requests_mock_initialized(self) -> bool:
+        return self._explicit_requests_mock is not None or self._implicit_requests_mock is not None
+
+    @property
+    def implicit_requests_mock_usage_started(self) -> bool:
+        return self._implicit_requests_mock is not None
+
+    @property
+    def explicit_requests_mock_usage_started(self) -> bool:
+        return self._explicit_requests_mock is not None
+
+    @property
+    def requests_mock(self):
+        return self._implicit_requests_mock or self._explicit_requests_mock
+
+    def _init_implicit_request_mock(self):
+        self._implicit_requests_mock = requests_mock.Mocker()
+        self._implicit_requests_mock.start()
 
 
-# TODO: Make normal class
 class ExpectedRequests:
     _expected_requests: List[Request] = []
 
@@ -268,6 +278,7 @@ class RequestDSL:
 
 def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
     global _ctx
+    assert _ctx is not None, "Before setting expectations, 'start' needs to be called"
     mocker = _ctx.init_request_mock(m)
     return RequestDSL(base_url, RequestUriBuilder(mocker))
 
