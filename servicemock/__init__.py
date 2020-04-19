@@ -6,6 +6,7 @@ from .servicemock import (  # noqa: F401
     JSON,
     verify,
     clean,
+    start,
     Cookie,
     JSONRequestBody,
 )

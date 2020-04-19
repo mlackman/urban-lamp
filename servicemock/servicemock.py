@@ -10,6 +10,8 @@ import requests_mock  # type: ignore
 # Types
 Headers = Dict[str, str]
 
+_requests_mock: requests_mock.Mocker = None
+
 
 class ExpectedRequests:
     _expected_requests: List[Request] = []
@@ -224,7 +226,14 @@ class RequestDSL:
 
 
 def expect(base_url: str, m: Optional[requests_mock.Mocker] = None) -> RequestDSL:
+    # TODO: Assert not giving m after having already _reguests_mock
     # TODO: if requests_mock not provide make add it to the Context objec (where ExpectedRequests should be also)
+    global _requests_mock
+    if not m:
+        if not _requests_mock:
+            _requests_mock = requests_mock.Mocker()
+            _requests_mock.start()
+        m = _requests_mock
     return RequestDSL(base_url, RequestUriBuilder(m))
 
 
@@ -236,9 +245,19 @@ def verify():
     assert requests == [], str(VerifyErrorMessage(requests))
 
 
+def start():
+    """
+    Inits service mock, can be called between tests
+    """
+    clean()
+
+
 def clean():
     """
     Clears all expectations.
     Should be called between tests
     """
+    if _requests_mock:
+        _requests_mock.stop()
+
     ExpectedRequests.reset()

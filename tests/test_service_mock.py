@@ -13,6 +13,18 @@ def servicemock():
     return sm
 
 
+def test_service_mock_can_be_used_without_requests_mock_explicitly_initialized():
+    sm.start()
+
+    sm.expect('http://my-service.com').to_receive(sm.Request('GET', '/v1/status-check'))
+    sm.expect('http://my-service.com').to_receive(sm.Request('GET', '/v1/users'))
+
+    requests.get('http://my-service.com/v1/status-check')
+
+    with pytest.raises(AssertionError):
+        sm.verify()
+
+
 def test_when_service_is_not_called_informative_exception_is_raised(requests_mock: requests_mock.Mocker, servicemock):
     sm.expect('http://my-service.com', requests_mock).to_receive(sm.Request('GET', '/v1/status-check'))
 
