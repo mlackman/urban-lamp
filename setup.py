@@ -7,7 +7,7 @@ with open("README.md", "r") as fh:
 
 setuptools.setup(
     name="servicemock",
-    version="0.1.0",
+    version="0.1.1",
     author="Mika Lackman",
     author_email="mika.lackman@gmail.com",
     description="Mock DSL for requests_mock",
@@ -15,6 +15,7 @@ setuptools.setup(
     long_description_content_type="text/markdown",
     url="https://github.com/mlackman/urban-lamp",
     packages=setuptools.find_packages(),
+    install_requires=open('requirements.txt').readlines(),
     classifiers=[
         "Development Status :: 3 - Alpha",
         "Programming Language :: Python :: 3",

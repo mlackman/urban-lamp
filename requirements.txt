@@ -1,3 +1,2 @@
-requests
-requests_mock
-pytest
+requests==2.23
+requests_mock==1.8.0
